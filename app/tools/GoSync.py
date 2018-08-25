@@ -19,9 +19,6 @@ db = client.GoCard
 gocard = db.gocard
 
 
-# "0160021476230844"
-# "notesadmin#"
-
 def driver_setup():
     options = webdriver.ChromeOptions()
     options.add_argument("user-agent=Mozilla/5.0 (Macintosh; Intel Mac OS X)")

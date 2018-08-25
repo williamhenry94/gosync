@@ -8,6 +8,8 @@ from marshmallow import ValidationError
 from pymongo import MongoClient, DESCENDING
 from flask_cors import cross_origin
 from app.Auth import requires_auth
+from app.tools.GoSync import run
+from app.tools.CSVReader import import_csv
 
 balanceBlueprint = Blueprint('balance', __name__)
 
@@ -45,3 +47,9 @@ def get_balances():
         balance_list.append(balance)
 
     return jsonify(balance_list)
+
+
+@balanceBlueprint.route('/test')
+def test():
+    import_csv()
+    return "test run"

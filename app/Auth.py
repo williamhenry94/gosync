@@ -6,10 +6,12 @@ from six.moves.urllib.request import urlopen
 
 from flask import Flask, jsonify, request, jsonify, _request_ctx_stack, current_app
 from app.helpers.AuthError import AuthError
-
+from firebase_admin import auth
 import os
 from pathlib import Path
 from dotenv import load_dotenv, find_dotenv
+
+from app.repositories.UserRepository import get_or_create_user
 # Format error response and append status code
 
 env_path = Path('.') / '.env'
@@ -56,47 +58,19 @@ def requires_auth(f):
     def decorated(*args, **kwargs):
         token = get_token_auth_header()
 
-        jsonurl = urlopen("https://"+AUTH0_DOMAIN+"/.well-known/jwks.json")
-        jwks = json.loads(jsonurl.read())
+        try:
+            decoded_token = auth.verify_id_token(token)
+            email = decoded_token['email']
+            uid = decoded_token['uid']
+            user = get_or_create_user({'email': email, 'uid': uid})
+            _request_ctx_stack.top.current_user = user
+        except Exception as e:
 
-        unverified_header = jwt.get_unverified_header(token)
-        rsa_key = {}
-        for key in jwks["keys"]:
-            if key["kid"] == unverified_header["kid"]:
-                rsa_key = {
-                    "kty": key["kty"],
-                    "kid": key["kid"],
-                    "use": key["use"],
-                    "n": key["n"],
-                    "e": key["e"]
-                }
-        if rsa_key:
-            try:
-                payload = jwt.decode(
-                    token,
-                    rsa_key,
-                    algorithms=ALGORITHMS,
-                    audience=API_IDENTIFIER,
-                    issuer="https://"+AUTH0_DOMAIN+"/"
-                )
-            except jwt.ExpiredSignatureError:
-                raise AuthError({"code": "token_expired",
-                                 "description": "token is expired"}, 401)
-            except jwt.JWTClaimsError:
-                raise AuthError({"code": "invalid_claims",
-                                 "description":
-                                 "incorrect claims,"
-                                 "please check the audience and issuer"}, 401)
-            except Exception:
-                raise AuthError({"code": "invalid_header",
-                                 "description":
-                                 "Unable to parse authentication"
-                                 " token."}, 401)
+            raise AuthError({"code": "invalid_header",
+                             "description": str(e)}, 401)
 
-            _request_ctx_stack.top.current_user = payload
-            return f(*args, **kwargs)
-        raise AuthError({"code": "invalid_header",
-                         "description": "Unable to find appropriate key"}, 401)
+        return f(*args, **kwargs)
+
     return decorated
 
 

@@ -3,22 +3,22 @@ from sqlalchemy.sql import func
 from datetime import datetime
 
 
-class Translink(db.Model):
+class FirebaseUser(db.Model):
 
-    __tablename__ = 'translink'
+    __tablename__ = 'firebase_users'
 
     id = db.Column(db.Integer, primary_key=True)
-    gocard_number = db.Column(db.String(16), nullable=False)
+    uid = db.Column(db.String(191), nullable=False)
 
-    password = db.Column(db.String(191), nullable=False)
+    email = db.Column(db.String(191), nullable=False)
 
     created_at = db.Column(db.DateTime, default=func.now())
     updated_at = db.Column(
         db.DateTime, default=func.now(), onupdate=func.now())
     deleted_at = db.Column(db.DateTime, nullable=True, default=None)
 
-    def __init__(self, gocard_number, password, deleted_at):
+    def __init__(self, uid, email, deleted_at):
 
-        self.gocard_number = gocard_number
-        self.password = password
+        self.uid = uid
+        self.email = email
         self.deleted_at = deleted_at
