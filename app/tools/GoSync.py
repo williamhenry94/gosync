@@ -13,21 +13,36 @@ from pymongo import MongoClient
 import hashlib
 import pytz
 from app.models.Translink import Translink
+from flask import current_app as app
 
 client = MongoClient('localhost', 27017)
 db = client.GoCard
 gocard = db.gocard
 
+download_dir = app.config['STORAGE_PATH']
 
 def driver_setup():
+
     options = webdriver.ChromeOptions()
     options.add_argument("user-agent=Mozilla/5.0 (Macintosh; Intel Mac OS X)")
     options.add_argument('window-size=800x841')
+    options.add_argument('headless')
+    options.add_argument('--no-sandbox')
+    options.add_argument('--disable-dev-shm-usage')
 
+    prefs = {'download.prompt_for_download': False,
+             'download.directory_upgrade': True,
+             "download.default_directory": download_dir,
+             'safebrowsing.enabled': False,
+             'safebrowsing.disable_download_protection': True}
+
+    options.add_experimental_option('prefs', prefs)
+
+    # driver = webdriver.Chrome(
+    #     executable_path="/home/vagrant/driver/chromedriver", chrome_options=options, service_args=['--verbose', '--log-path=/home/vagrant/chromedriver.log'])
     driver = webdriver.Chrome(
         "/Users/williamhenry/Downloads/chromedriver-latest", chrome_options=options)
 
-    driver.set_window_size(1120, 550)
     translink = Translink.query.filter_by(deleted_at=None).first()
 
     gocard_number = translink.gocard_number
@@ -134,4 +149,21 @@ def run():
     driver.find_element_by_xpath(
         '(//input[contains(@value,\'Search\')])[2]').click()
 
+    driver.save_screenshot('./test1.png')
+
+    print('clicking the csv button')
+
     driver.find_element_by_xpath('//a[contains(text(), \'CSV\')]').click()
+
+    driver.command_executor._commands["send_command"] = (
+        "POST", '/session/$sessionId/chromium/send_command')
+
+    params = {'cmd': 'Page.setDownloadBehavior', 'params': {
+        'behavior': 'allow', 'downloadPath': download_dir}}
+
+    driver.execute("send_command", params)
+
+    time.sleep(10)
+
+    print("Finish Selenium Process, Quit Chrome!!")
+    driver.quit()

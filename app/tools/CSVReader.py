@@ -13,7 +13,9 @@ def parser(x):
 
 def import_csv():
 
-    csv = pd.read_csv('/Users/williamhenry/Documents/GoCard/app/storage/histories/Travel_history.csv',
+    storage_path = app.config['STORAGE_PATH']
+
+    csv = pd.read_csv(storage_path + 'histories/Travel_history.csv',
                       header=0, squeeze=True, date_parser=parser).fillna(value=0)
 
     date = (csv[' Date'])

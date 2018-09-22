@@ -3,7 +3,7 @@ from flask import Flask, jsonify
 from app.database import sqla, mongo
 from app.controllers.BalanceController import balanceBlueprint
 from app.controllers.TranslinkController import translinkBlueprint
-# from app.controllers.RatingController import ratingBlueprint
+
 import os
 from pathlib import Path
 from dotenv import load_dotenv, find_dotenv
@@ -13,9 +13,14 @@ from firebase_admin import db
 from firebase_admin import credentials
 from firebase_admin import auth
 
-from celery import Celery
-from celery.schedules import crontab
-from app.celery_init import make_celery
+from rq_scheduler import Scheduler
+from rq import Queue, Connection
+from rq.job import Job
+from worker import conn
+from datetime import datetime, timedelta
+
+from app.tools.GoSync import run
+from redis import Redis
 
 app = Flask(__name__)
 
@@ -24,7 +29,6 @@ load_dotenv(dotenv_path=find_dotenv())
 
 app.register_blueprint(balanceBlueprint)
 app.register_blueprint(translinkBlueprint)
-# app.register_blueprint(ratingBlueprint)
 
 app.config["WTF_CSRF_ENABLED"] = True
 app.secret_key = os.getenv('SECRET_KEY')
@@ -35,19 +39,13 @@ app.config["MONGODB_PORT"] = int(os.getenv("MONGODB_PORT"))
 app.config["MONGODB_DB"] = os.getenv("MONGODB_DB")
 
 app.config["REDIS_HOST"] = os.getenv("REDIS_HOST")
-app.config["REDIS_PORT"] = os.getenv("REDIS_PORT")
+app.config["REDIS_PORT"] = int(os.getenv("REDIS_PORT"))
 app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv("SQLA_URI")
+app.config['STORAGE_PATH'] = os.getenv("STORAGE_PATH")
 
-app.config.update(
-    CELERY_BROKER_URL='redis://' +
-    app.config["REDIS_HOST"]+':'+app.config["REDIS_PORT"],
-    CELERY_RESULT_BACKEND='redis://' +
-    app.config["REDIS_HOST"]+':'+app.config["REDIS_PORT"]
-)
 
 sqla.init_app(app)
 mongo.init_app(app)
-celery = make_celery(app)
 
 cred = credentials.Certificate(os.getenv('FIREBASE_CERT'))
 
@@ -56,30 +54,24 @@ try:
 except Exception:
     firebase_admin.get_app()
 
+# preventing race condition
+with Connection():
+    q = Queue(connection=conn)
+    scheduler = Scheduler(queue=q)  # rq scheduler
+    # do some cron
+    scheduler.cron(
+        '0 */2 * * *',  # Time for first execution, in UTC timezone
+        func=run,                     # Function to be queued
+        # Time before the function is called again, in seconds
+        queue_name='Translink-Cron',
+        # Repeat this number of times (None means repeat forever)
+        repeat=2
+    )
+    print(scheduler.get_jobs())
+
 
 @app.errorhandler(AuthError)
 def handle_auth_error(ex):
     response = jsonify(ex.error)
     response.status_code = ex.status_code
     return response
-
-
-@celery.on_after_configure.connect
-def setup_periodic_tasks(sender, **kwargs):
-    # Calls test('hello') every 10 seconds.
-    print('called task printer')
-    sender.add_periodic_task(10.0, test.s('hello'), name='add every 10')
-
-    # Calls test('world') every 30 seconds
-    sender.add_periodic_task(30.0, test.s('world'), expires=10)
-
-    # Executes every Monday morning at 7:30 a.m.
-    sender.add_periodic_task(
-        crontab(hour=7, minute=30, day_of_week=1),
-        test.s('Happy Mondays!'),
-    )
-
-
-@celery.task
-def test(arg):
-    print(arg)
