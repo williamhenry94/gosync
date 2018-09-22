@@ -6,7 +6,7 @@ app/helpers/__pycache__
 app/helpers/decorators/__pycache__
 app/repositories/__pycache__
 app/models/__pycache__
-app/storage/uxdco-1529451234453-firebase-adminsdk-doeb1-56c26ef430.json
+storage
 bin
 include
 lib
@@ -17,3 +17,4 @@ dump.rdb
 GoCard.ini
 pyvenv.cfg
 celerybeat-schedule.db
+__pycache__/worker.cpython-36.pyc

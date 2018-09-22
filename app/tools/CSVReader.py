@@ -5,7 +5,7 @@ from app.models.GocardHistory import GocardHistory
 import time
 from app.database import sqla
 import hashlib
-
+from flask import current_app as app
 
 def parser(x):
     return datetime.strptime(x, '%d/%b/%Y')
