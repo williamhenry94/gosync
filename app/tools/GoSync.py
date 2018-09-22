@@ -13,13 +13,15 @@ from pymongo import MongoClient
 import hashlib
 import pytz
 from app.models.Translink import Translink
-from flask import current_app as app
+from dotenv import load_dotenv, find_dotenv
 
 client = MongoClient('localhost', 27017)
 db = client.GoCard
 gocard = db.gocard
 
-download_dir = app.config['STORAGE_PATH']
+load_dotenv(dotenv_path=find_dotenv())
+
+download_dir = os.getenv("STORAGE_PATH")
 
 def driver_setup():
 
