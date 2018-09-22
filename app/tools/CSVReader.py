@@ -8,6 +8,7 @@ import hashlib
 from dotenv import load_dotenv, find_dotenv
 import os
 
+
 def parser(x):
     return datetime.strptime(x, '%d/%b/%Y')
 
@@ -15,7 +16,7 @@ def parser(x):
 def import_csv():
 
     load_dotenv(dotenv_path=find_dotenv())
-    download_dir = os.getenv("STORAGE_PATH")
+    storage_path = os.getenv("STORAGE_PATH")
 
     csv = pd.read_csv(storage_path + 'histories/Travel_history.csv',
                       header=0, squeeze=True, date_parser=parser).fillna(value=0)
